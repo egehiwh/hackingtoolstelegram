@@ -1,17 +1,20 @@
 {
-  "name": "telegram-security-bot-ai",
+  "name": "telegram-security-bot",
   "version": "1.0.0",
-  "description": "Advanced Telegram bot for security scans and vulnerability checks with AI integration",
-  "main": "index.js",
+  "description": "A Telegram bot for security scanning and vulnerability assessment using GoLinkFinder, CVEMap, and Nmap with OpenAI analysis.",
+  "main": "index.js",  
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js" 
   },
+  "keywords": ["telegram", "bot", "security", "goLinkFinder", "cvemap", "nmap", "openai"],
+  "author": "Your Name",
+  "license": "MIT",
   "dependencies": {
-    "node-telegram-bot-api": "^0.62.0",
-    "execa": "^6.1.0",
-    "openai": "^3.2.1" 
+    "node-telegram-bot-api": "^0.62.0", 
+    "openai": "^3.1.0",
+    "execa": "^6.1.0" 
   },
-  "devDependencies": {
-    "eslint": "^8.0.0" 
+  "engines": {
+    "node": ">=14.0.0"  
   }
 }
