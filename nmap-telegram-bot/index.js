@@ -1,129 +1,138 @@
 const TelegramBot = require('node-telegram-bot-api');
-const util = require('util');
-const exec = util.promisify(require('child_process').exec);
+const { Configuration, OpenAIApi } = require('openai');
+const { exec } = require('execa'); 
 
-const TOKEN = 'TELEGRAM BOT API KEY HERE'; // Replace with your Telegram bot token
+const token = '7379088123:AAF69W2YNv4t04STq4J_c0jVtBzJ8yOQe3Q';
+const openaiApiKey = 'sk-proj-yGTvrdRghoJSYD0yslrrT3BlbkFJxS7qeql5ak1HUeAZW5g2'; 
 
-const bot = new TelegramBot(TOKEN, { polling: true });
-
-const emojiMenu = ['🌐', '🔒', '🕵️', '🔍', '🖥️', '🛠️', '🔓', '🔌', '📊', '🔏', '🛡️'];
+const bot = new TelegramBot(token, { polling: true });
+const openai = new OpenAIApi(new Configuration({ apiKey: openaiApiKey }));
 
 const scanOptions = [
-  { emoji: '🌐', name: 'Network Discovery Scan', description: 'Discovers live hosts on the network.' },
-  { emoji: '🔒', name: 'TCP Connect Scan', description: 'Performs a TCP connect scan on the target.' },
-  { emoji: '🕵️', name: 'TCP SYN/Stealth Scan', description: 'Performs a stealthy TCP SYN scan.' },
-  { emoji: '🔍', name: 'UDP Scan', description: 'Performs a UDP port scan on the target.' },
-  { emoji: '🖥️', name: 'OS Detection', description: "Attempts to determine the target's operating system." },
-  { emoji: '🛠️', name: 'Version Detection', description: 'Attempts to determine versions of services running on target ports.' },
-  { emoji: '🔓', name: 'Vulnerability Detection', description: 'Detects vulnerabilities using Nmap scripts.' },
-  { emoji: '🔌', name: 'Specific Port Scan', description: 'Scans a specific port on the target IP.' },
-  { emoji: '📊', name: 'Aggressive Scan', description: 'Performs an aggressive scan with more information.' },
-  { emoji: '🔏', name: 'Intense Scan', description: 'A more intensive scan that includes all scan types.' },
+    ['Network Discovery (Ping Scan)', '-sn'],
+    ['TCP Connect Scan', '-sT'],
+    ['TCP SYN (Stealth) Scan', '-sS'],
+    ['UDP Scan', '-sU'],
+    ['OS Detection', '-O'],
+    ['Version Detection', '-sV'],
+    ['Vulnerability Scan', '-sV --script vuln'],
+    ['Aggressive Scan', '-A'],
+    ['Intense Scan', '-T4 -A -v'],
+    ['Custom Scan', 'custom']
 ];
 
-const subscribeMessage = `🚀 Welcome to the NMAP Scan Bot! 🚀\nBefore we start, please consider subscribing to my YouTube channel Hacker101 for awesome content: https://www.youtube.com/@Hacker101vids`;
+bot.onText(/\/start/, sendWelcomeMessage);
+bot.on('callback_query', handleCallbackQuery);
 
-bot.onText(/\/scan/, async (msg) => {
-  const chatId = msg.chat.id;
+function sendWelcomeMessage(msg) {
+    const startMessage = "Welcome to the Security Bot! Choose a tool:";
+    const keyboard = {
+        inline_keyboard: [
+            [{ text: 'GoLinkFinder', callback_data: 'goLinkFinder' }],
+            [{ text: 'CVE Lookup (CVEMap)', callback_data: 'cvemap' }],
+            [{ text: 'Nmap Network Scans', callback_data: 'nmap' }],
+        ],
+    };
+    bot.sendMessage(msg.chat.id, startMessage, { reply_markup: keyboard });
+}
 
-  // Send the subscribe message with rocket emoji
-  await bot.sendMessage(chatId, subscribeMessage);
-
-  const menu = scanOptions
-    .map(
-      (option, index) =>
-        `${option.emoji} ${index + 1}. ${option.name}\n${option.description}`
-    )
-    .join('\n\n');
-
-  await bot.sendMessage(
-    chatId,
-    `🔍 Please select a scan option:\n\n${menu}`
-  );
-});
-
-bot.on('message', async (msg) => {
-  const chatId = msg.chat.id;
-  const message = msg.text;
-
-  if (!isNaN(message) && parseInt(message) >= 1 && parseInt(message) <= scanOptions.length) {
-    const selectedOption = parseInt(message) - 1;
-    const options = [
-      '-sn',
-      '-sT',
-      '-sS',
-      '-sU',
-      '-O',
-      '-sV',
-      '-sV --script vuln',
-      '-p',
-      '-A',
-      '-T4 -A -v',
-    ];
-
-    let responseMessage = '';
-    if (selectedOption === 7) {
-      responseMessage = 'Please enter the IP and Port (e.g., 192.168.1.1 80) to scan:';
-    } else {
-      responseMessage = 'Please enter the IP or target address to scan:';
-    }
-
-    await bot.sendMessage(chatId, responseMessage);
-
-    const scanParamsMsg = await new Promise((resolve) => {
-      bot.once('message', resolve);
-    });
-
-    const scanParams = scanParamsMsg.text.split(' ');
+async function handleCallbackQuery(query) {
+    const chatId = query.message.chat.id;
+    const data = query.data;
 
     try {
-      let command = '';
-      if (selectedOption === 7 && scanParams.length === 2) {
-        const [ip, port] = scanParams;
-        command = `nmap -p ${port} ${ip}`;
-      } else if (scanParams.length === 1) {
-        command = `nmap ${options[selectedOption]} ${scanParams[0]}`;
-      } else {
-        throw new Error('Invalid input. Please enter the correct parameters.');
-      }
-
-      // Send the Nmap command to Telegram before executing it
-      await bot.sendMessage(chatId, `🔍 Executing Nmap command for "${scanOptions[selectedOption].name}":\n\n${command}`);
-
-      const { stdout, stderr } = await exec(command);
-      const styledResults = formatScanResults(stdout);
-
-      const messageChunks = splitIntoChunks(styledResults, 4000); // Adjust chunk size as needed
-
-      for (const chunk of messageChunks) {
-        await bot.sendMessage(chatId, `✅ Scan results:\n\n${chunk}`);
-      }
-
-      // Send completion message and instructions for a new scan
-      await bot.sendMessage(chatId, '✅ Scan completed!');
-
-      await bot.sendMessage(
-        chatId,
-        `🔍 Start a new scan? If yes, use the /scan command again.`
-      );
+        switch (data) {
+            case 'goLinkFinder':
+                handleGoLinkFinder(chatId);
+                break;
+            case 'cvemap':
+                handleCvemap(chatId);
+                break;
+            case 'nmap':
+                sendNmapOptions(chatId);
+                break;
+            default:
+                if (data.startsWith('nmap_')) {
+                    handleNmapScan(chatId, data.split('_')[1]);
+                } else {
+                    bot.sendMessage(chatId, 'Invalid option selected.');
+                }
+        }
     } catch (error) {
-      await bot.sendMessage(chatId, `An error occurred: ${error.message}`);
+        console.error("Error handling callback query:", error);
+        bot.sendMessage(chatId, 'An error occurred while processing your request.');
     }
-  }
-});
-
-// Function to split a string into chunks
-function splitIntoChunks(text, chunkSize) {
-  const chunks = [];
-  for (let i = 0; i < text.length; i += chunkSize) {
-    chunks.push(text.slice(i, i + chunkSize));
-  }
-  return chunks;
 }
 
-// Function to format scan results
-function formatScanResults(results) {
-  return results
-    .replace(/([0-9]+\/[a-z]+)\s+open/g, '✅ $1 open')
-    .replace(/([0-9]+\/[a-z]+)\s+closed/g, '🚫 $1 closed');
+async function handleGoLinkFinder(chatId) {
+    bot.sendMessage(chatId, 'Enter a URL:');
+    bot.once('message', async (msg) => {
+        const url = msg.text;
+        try {
+            const { stdout } = await exec(`goLinkFinder -d ${url}`);
+            bot.sendMessage(chatId, stdout || 'No endpoints found.');
+        } catch (error) {
+            bot.sendMessage(chatId, 'Error executing GoLinkFinder. Please check the URL and ensure GoLinkFinder is installed.');
+        }
+    });
 }
+async function handleCvemap(chatId) {
+    bot.sendMessage(chatId, 'Enter a CVE ID, CWE ID, Vendor, or Product:');
+    bot.once('message', async (msg) => {
+        const query = msg.text;
+        try {
+            const { stdout } = await exec(`cvemap -id ${query}`);
+            const aiResponse = await openai.createCompletion({
+                model: "text-davinci-003",
+                prompt: `Summarize the following CVE information and provide potential security risks:\n\n${stdout}`,
+                max_tokens: 200,
+                temperature: 0.5,
+            });
+            bot.sendMessage(chatId, aiResponse.data.choices[0].text || 'No relevant CVE information found.');
+        } catch (error) {
+            console.error(error);
+            bot.sendMessage(chatId, 'Error executing CVEMap or processing AI response. Please check the query and ensure CVEMap is installed.');
+        }
+    });
+}
+
+async function sendNmapOptions(chatId) {
+    const keyboard = {
+        inline_keyboard: scanOptions.map((option) => [{ text: option[0], callback_data: `nmap_${option[1]}` }]),
+    };
+    bot.sendMessage(chatId, 'Choose an Nmap scan type:', { reply_markup: keyboard });
+}
+
+async function handleNmapScan(chatId, nmapArgs) {
+    if (nmapArgs === 'custom') {
+        bot.sendMessage(chatId, 'Enter custom Nmap arguments:');
+        bot.once('message', async (msg) => {
+            const customArgs = msg.text;
+            await executeNmapScan(chatId, customArgs);
+        });
+    } else {
+        bot.sendMessage(chatId, 'Enter target IP or hostname:');
+        bot.once('message', async (msg) => {
+            const target = msg.text;
+            await executeNmapScan(chatId, nmapArgs, target);
+        });
+    }
+}
+
+async function executeNmapScan(chatId, nmapArgs, target = '') {
+    try {
+        const command = `nmap ${nmapArgs} ${target}`;
+        const { stdout } = await exec(command);
+        const aiResponse = await openai.createCompletion({
+            model: "text-davinci-003",
+            prompt: `Summarize the following Nmap scan results and highlight potential vulnerabilities:\n\n${stdout}`,
+            max_tokens: 300,
+            temperature: 0.5,
+        });
+        bot.sendMessage(chatId, aiResponse.data.choices[0].text);
+    } catch (error) {
+        console.error(error);
+        bot.sendMessage(chatId, 'Error executing Nmap or processing AI response. Please check the target and Nmap arguments.');
+    }
+}
+
