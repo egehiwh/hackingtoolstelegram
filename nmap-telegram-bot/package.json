@@ -12,6 +12,6 @@
     "openai": "^3.2.1" 
   },
   "devDependencies": {
-    "eslint": "^8.0.0" // Optional, for code linting
+    "eslint": "^8.0.0" 
   }
 }
