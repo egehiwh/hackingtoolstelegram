@@ -1,16 +1,17 @@
 {
-  "name": "nmap-telegram-bot",
+  "name": "telegram-security-bot-ai",
   "version": "1.0.0",
-  "description": "A Telegram bot for running Nmap scans",
+  "description": "Advanced Telegram bot for security scans and vulnerability checks with AI integration",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "Hacker101",
-  "license": "ISC",
   "dependencies": {
-    "node-telegram-bot-api": "^0.53.0",
-    "util": "^0.12.4",
-    "child_process": "^1.0.2"
+    "node-telegram-bot-api": "^0.62.0",
+    "execa": "^6.1.0",
+    "openai": "^3.2.1" 
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0" // Optional, for code linting
   }
 }
